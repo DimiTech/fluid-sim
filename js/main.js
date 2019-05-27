@@ -7,16 +7,27 @@ const CTX           = CANVAS.getContext('2d');
 var paused = false;
 
 // -------------------------- GLOBAL WORLD CONTROL PARAMETERS. ------------------------ \\
+var PARTICLE_COUNT = 1000
 var particleWeight = 0.1
 var particleMaxVel = 30
 var particleSteer  = 10
 var nozzleWidth    = 20
-var nozzlePosition = 300
+var nozzlePosition = 350
 
 // Relocate cube controls.
 document.getElementById('relocate-cube').addEventListener('click', event => {
   rect.x = 180;
 });
+
+var particleCountLabel = document.querySelector('label[for=particle-count]')
+var particleCountSlider = document.getElementById('particle-count')
+particleCountLabel.textContent = 'Particles: ' + particleCountSlider.value
+particleCountSlider.addEventListener('input', function() {
+  PARTICLE_COUNT = parseInt(particleCountSlider.value, 10)
+  particleCountLabel.textContent = 'Particles: ' + PARTICLE_COUNT
+  particles = []
+  createParticles()
+})
 
 var nozzleRadiusLabel = document.querySelector('label[for=nozzle-radius-slider]')
 var nozzleRadiusSlider = document.getElementById('nozzle-radius-slider')
@@ -80,8 +91,10 @@ function FluidParticle(options) {
 
 
 FluidParticle.prototype.render = function() {
-    CTX.fillStyle = 'rgba(' + parseInt((this.xVel * Math.abs(this.yVel) * 33), 10) + ', 180, 255, 1)';
-    CTX.fillRect(this.x, this.y, 1, 1);
+    // TODO: Performance bottleneck
+    // CTX.fillStyle = 'rgba(' + Math.min(parseInt((this.xVel * Math.abs(this.yVel) * 33), 10), 255) + ', 180, 255, 1)';
+    CTX.fillStyle = 'cyan'
+    CTX.fillRect(Math.floor(this.x), Math.floor(this.y), 1, 1);
 };
 
 FluidParticle.prototype.checkBounds = function() {
@@ -90,11 +103,15 @@ FluidParticle.prototype.checkBounds = function() {
     } else if (this.x < 0) {
         return false;
     } 
+    if (this.xVel <= 3) {
+      return true;
+    }
     if (this.y >= CANVAS_HEIGHT) {
         // Bounce off the floor.
         this.y = CANVAS_HEIGHT - 1;
-        this.yVel = -this.yVel * (0.3 + (0.2 * Math.random())); // 0.5 is the dampening.
-
+        this.yVel = -this.yVel * (0.25 + (0.2 * Math.random())); // 0.25 is the dampening.
+        // TODO: Enable for drag!
+        // this.xVel = this.xVel * (0.3 + (0.2 * Math.random())); // 0.3 is the dampening.
         return false;
     } else if (this.y < -40) {
         return false;
@@ -133,9 +150,12 @@ FluidParticle.prototype.moveTowards = function(x, y) {
 
 var particles = [];
 
-for (var i = 0; i < 3000; i += 1) {
+createParticles()
 
-    particles.push(createParticle(Math.random() * CANVAS_WIDTH));
+function createParticles() {
+  for (var i = 0; i < PARTICLE_COUNT; i += 1) {
+      particles.push(createParticle(Math.random() * CANVAS_WIDTH));
+  }
 }
 
 function Rectangle(options) {
@@ -159,42 +179,80 @@ var rect = new Rectangle({
     y: 420,
     width: 60,
     height: 60,
-    weight: 100
+    weight: 400
 });
 
 
 // ---------------------------------- The game loop. ---------------------------------- \\
+var lastFrameTime;
+var frameDeltaTime;
+var frameOverstepTime = 0;
+var FPS_ARR = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+var FPS;
+var ONE_FRAME_LENGTH_IN_SECONDS = 0.0178
+var skipFrameRendering = false;
 requestAnimationFrame(heartbeat);
 
+function calculateFrameRate() {
+  if (!lastFrameTime) {
+    lastFrameTime = performance.now();
+    FPS = 0;
+  } else {
+    var now = performance.now();
+    frameDeltaTime = (now - lastFrameTime) / 1000;
+    if (frameDeltaTime > ONE_FRAME_LENGTH_IN_SECONDS) {
+      frameOverstepTime += frameDeltaTime - ONE_FRAME_LENGTH_IN_SECONDS
+    }
+
+    FPS_ARR.unshift(1 / (frameDeltaTime + frameOverstepTime));
+    FPS_ARR.pop();
+    FPS = FPS_ARR.reduce((sum, current) => sum += current, 0) / FPS_ARR.length;
+
+    if (frameOverstepTime >= ONE_FRAME_LENGTH_IN_SECONDS) {
+      frameOverstepTime = frameOverstepTime - ONE_FRAME_LENGTH_IN_SECONDS;
+      skipFrameRendering = true;
+    } else {
+      skipFrameRendering = false;
+    }
+
+    lastFrameTime = now;
+  }
+}
+
+function drawFrameRate() {
+  CTX.fillText('FPS: ' + FPS.toFixed(2), 20, 20)
+}
+
 var counter = 0;
-var outOfBounds = 0;
 
 function heartbeat() {
     if (!paused) {
-        CTX.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); // <--- DISABLE CLEARING TO SEE THE PARTICLES' PATH.
 
-        CTX.fillStyle = 'orange';
+        calculateFrameRate()
+        
+        if (!skipFrameRendering) {
+          CTX.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); // <--- DISABLE CLEARING TO SEE THE PARTICLES' PATH.
+
+          CTX.fillStyle = 'orange';
+
+          drawFrameRate()
+        }
 
         rect.checkCollisionWithParticles();
 
-        CTX.fillRect(rect.x, rect.y, rect.width, rect.height);
+        if (!skipFrameRendering) {
+          CTX.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
 
         counter++;
         var timeForVelChangeY = (counter % 20) === 0;
 
         if ((counter % 61) === 0) {
+            // paused = true;
             counter = 0;
         }
-
         
-        if (outOfBounds > 0) {
-            for (var i = 0; i < outOfBounds; i++) {
-                particles.push(createParticle());
-            }   
-            outOfBounds = 0; 
-        }
-        
-        particles = particles.filter(particle => {
+        particles.forEach((particle, index) => {
             // Vary the Y velocity.
             if (timeForVelChangeY) {
                 particle.yVel += 2 * (Math.random() - 0.5);
@@ -205,38 +263,40 @@ function heartbeat() {
 
             // Gravity:
             particle.yVel += particle.weight;
+            // TODO: Enable for drag!
+            // this.xVel = this.xVel / (this.weight / 4)
 
             particle.x += particle.xVel;
             particle.y += particle.yVel;
 
-            // if (particle.x < mouse.x) {
+            if (particleSteer > 0 && particle.x < mouse.x) {
                 particle.moveTowards(mouse.x, mouse.y);
-            // }
-
-
-            // Check if exited screen.
-            particle.checkBounds();
-
-            particle.render();
-            
-            // Check if out of bounds, and create new particles if needed.
-            var inBounds = particle.checkBounds();
-            if (!inBounds) {
-                outOfBounds++;
             }
 
-            return inBounds;
-            
+            // Check if out of bounds, and create new particles if needed.
+            particle.checkBounds();
+            var inBounds = particle.checkBounds();
+            if (!inBounds) {
+              particle.x = 1
+              particle.y = nozzlePosition + nozzleWidth * Math.random()
+              particle.xVel = 6 + 3 * Math.random()
+              particle.yVel = 0.5 * (Math.random() - 0.5)
+              particle.weight = particleWeight
+            }
+
+            // TODO: Performance bottleneck
+            if (!skipFrameRendering) {
+              particle.render();
+            }
+            return true;
         });
     }
     
-
     requestAnimationFrame(heartbeat);
 }
 
-
 function createParticle(xPos) {
-    var xVel = 3, 
+    var xVel = 6, 
         yVel = 0.5;
 
     return new FluidParticle({

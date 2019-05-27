@@ -28,11 +28,14 @@
     <body>
         <canvas id="the-canvas" width="640" height="480"></canvas>   
         <div class="control-container">
+            <label for="particle-count"></label>
+            <input id="particle-count" type="range" min="0" max="40000" value="1000">
+
             <label for="nozzle-radius-slider"></label>
             <input id="nozzle-radius-slider" type="range" min="0" max="480" value="20">
 
             <label for="nozzle-position-slider"></label>
-            <input id="nozzle-position-slider" type="range" min="0" max="480" value="300">
+            <input id="nozzle-position-slider" type="range" min="0" max="480" value="350">
 
             <label for="gravity-slider"></label>
             <input id="gravity-slider" type="range" min="0" max="100" value="10">
@@ -45,6 +48,8 @@
 
             <br>
             <button id="relocate-cube">Bring the cube back</button>
+
+            <p>Press "P" to pause/unpause</p>
         </div>
 
         <script src="js/main.js"></script>
