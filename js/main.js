@@ -63,10 +63,10 @@ maxVelSlider.addEventListener('input', function() {
 
 var steerLabel = document.querySelector('label[for=steer-slider]')
 var steerSlider = document.getElementById('steer-slider')
-steerLabel.textContent = 'Mouse Steer: ' + steerSlider.value
+steerLabel.textContent = 'Mouse Pull: ' + steerSlider.value
 steerSlider.addEventListener('input', function() {
   particleSteer = parseInt(steerSlider.value, 10)
-  steerLabel.textContent = 'Mouse Steer: ' + particleSteer
+  steerLabel.textContent = 'Mouse Pull: ' + particleSteer
 })
 
 // ---------------------------- Fluid particle definition. ---------------------------- \\
@@ -147,6 +147,15 @@ FluidParticle.prototype.moveTowards = function(x, y) {
         }  
     // }
 };
+
+FluidParticle.prototype.respawn = function() {
+  this.x = 1
+  this.y = nozzlePosition + nozzleWidth * Math.random()
+  this.xVel = 6 + 3 * Math.random()
+  this.yVel = 0.5 * (Math.random() - 0.5)
+  this.weight = particleWeight
+  this.steer = particleSteer
+}
 
 var particles = [];
 
@@ -277,11 +286,7 @@ function heartbeat() {
             particle.checkBounds();
             var inBounds = particle.checkBounds();
             if (!inBounds) {
-              particle.x = 1
-              particle.y = nozzlePosition + nozzleWidth * Math.random()
-              particle.xVel = 6 + 3 * Math.random()
-              particle.yVel = 0.5 * (Math.random() - 0.5)
-              particle.weight = particleWeight
+              particle.respawn()
             }
 
             // TODO: Performance bottleneck
