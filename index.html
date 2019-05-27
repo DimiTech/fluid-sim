@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Fluid Sim</title>
+        <style>
+            body {
+                background: #333;
+                text-align: center;
+                font-family: Arial, sans-serif;
+                color: #f7f7f7;
+                padding-left: 150px;
+                padding-top: 50px;
+            }
+            canvas {
+                background: black;
+                display: inline;
+                margin: 50px auto;
+            }
+
+            .control-container {
+                float: left;
+                display: flex;
+                flex-direction: column;
+                width: 200px;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="the-canvas" width="640" height="480"></canvas>   
+        <div class="control-container">
+            <label for="nozzle-radius-slider"></label>
+            <input id="nozzle-radius-slider" type="range" min="0" max="480" value="20">
+
+            <label for="nozzle-position-slider"></label>
+            <input id="nozzle-position-slider" type="range" min="0" max="480" value="300">
+
+            <label for="gravity-slider"></label>
+            <input id="gravity-slider" type="range" min="0" max="100" value="10">
+
+            <label for="max-vel-slider"></label>
+            <input id="max-vel-slider" type="range" min="10" max="100" value="30">
+
+            <label for="steer-slider"></label>
+            <input id="steer-slider" type="range" min="0" max="300" value="10">
+
+            <br>
+            <button id="relocate-cube">Bring the cube back</button>
+        </div>
+
+        <script src="js/main.js"></script>
+    </body>
+</html>
